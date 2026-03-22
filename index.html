@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="kz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>my world 💕</title>
+  <style>
+    html,body{margin:0;height:100%;background:#0a0010;overflow:hidden}
+    #galaxy-canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+    .pill{position:fixed;top:10px;left:50%;transform:translateX(-50%);padding:6px 16px;border-radius:999px;
+          background:rgba(255,20,120,.12);border:1px solid rgba(255,100,180,.35);
+          color:#ffb3d9;font-family:'Pacifico',cursive;font-size:clamp(14px,3vw,20px);
+          text-shadow:0 0 12px #ff1493,0 0 30px #ff1493;
+          white-space:nowrap;z-index:10;}
+    /* музыка ойнатқышы */
+    .player{position:fixed;left:10px;bottom:10px;display:flex;gap:8px;align-items:center;
+            background:rgba(20,0,30,.5);border:1px solid rgba(255,100,180,.2);border-radius:12px;padding:6px 12px;
+            backdrop-filter:blur(6px);color:#ffb3d9;font-family:system-ui;z-index:10;}
+    .player button{padding:6px 12px;border-radius:10px;border:1px solid rgba(255,100,180,.3);
+                   background:rgba(255,20,120,.15);color:#ffb3d9;cursor:pointer;font-size:16px;}
+    .pname{font-size:13px;opacity:.7;}
+    .error{position:fixed;inset:auto 10px 70px;background:#260015;color:#ffd9f7;
+           border:1px solid #ff8ae5;border-radius:10px;padding:10px;font:12px system-ui;display:none;}
+    
+    .hrt {
+  display: inline-block;
+  animation: hb 1s ease-in-out infinite;
+}
+
+@keyframes hb {
+  0%,100% { transform: scale(1); }
+  25%     { transform: scale(1.4); }
+  75%     { transform: scale(1.15); }
+}
+    
+    /* ── СУРЕТТЕР (src="" ішіне жолыңды жаз) ── */
+    /*
+      Суреттерді кодтан қос:
+      id="si0" — ортадағы ең үлкен (мысалы: 2 аю)
+      id="si1"..."si7" — айналасындағылар
+    */
+    .si{position:fixed;border-radius:50%;overflow:hidden;pointer-events:none;z-index:8;
+        border:2px solid rgba(255,100,180,.4);box-shadow:0 0 20px rgba(255,20,120,.4);}
+    .si img{width:100%;height:100%;object-fit:cover;display:block;}
+
+
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+<canvas id="galaxy-canvas"></canvas>
+<div class="pill">my inner cosmos <span class="hrt">❤️</span></div>
+<div id="err" class="error"></div>
+
+<!-- ══════════════════════════════════════
+  СУРЕТТЕРДІ ОСЫНДА ӨЗГ ЕРТ:
+  src="" ішіне файл атын жаз, мысалы src="bear.png"
+  Сурет жоқ болса (src="") — ол орын көрінбейді
+══════════════════════════════════════ -->
+<!-- СУРЕТТЕРДІ ОСЫНДА КОЙ: src="" ішіне файл атын жаз -->
+<div class="si" id="si0"><img src="simba1.jpg" alt=""></div>
+<div class="si" id="si1"><img src="simba2.jpg" alt=""></div>
+<div class="si" id="si2"><img src="simba3.jpg" alt=""></div>
+<div class="si" id="si3"><img src="simba4.jpg" alt=""></div>
+<div class="si" id="si4"><img src="simba5.jpg" alt=""></div>
+<div class="si" id="si5"><img src="simba6.jpg" alt=""></div>
+<div class="si" id="si6"><img src="simba7.jpg" alt=""></div>
+<div class="si" id="si7"><img src="simba8.jpg" alt=""></div>
+<div class="si" id="si8"><img src="simba9.jpg" alt=""></div>
+<div class="si" id="si9"><img src="simba10.jpg" alt=""></div>
+
+<!-- ═══════════════════════════════════════
+  СТИКЕРЛЕРДІ ОСЫНДА КОЙ:
+  src="" ішіне файл атын жаз, мысалы: src="sticker1.png"
+  HTML файлымен БІР ҚАЛТАДА болуы керек
+  src="" бос қалса — ол орын КӨРІНБЕЙДІ
+═══════════════════════════════════════ -->
+<div class="si" id="stk0"><img src="dudu1.gif" alt=""></div>
+<div class="si" id="stk1"><img src="dudu2.gif" alt=""></div>
+<div class="si" id="stk2"><img src="dudu4.gif" alt=""></div>
+<div class="si" id="stk3"><img src="dudu3.gif" alt=""></div>
+<div class="si" id="stk4"><img src="dudu5.gif" alt=""></div>
+
+<!-- МУЗЫКАНЫ ОСЫНДА КОЙ: src="" ішіне файл атын жаз -->
+<div class="player">
+  <button id="playBtn">▶︎</button>
+  <span class="pname" id="pname">♫</span>
+  <audio id="audio" preload="auto" loop>
+    <source src="musiclove.mp3" type="audio/mpeg">
+  </audio>
+</div>
+
+<canvas id="fx" style="position:fixed;inset:0;pointer-events:none;z-index:9;"></canvas>
+
+<script>
+(function(){
+const err=document.getElementById('err');
+function showError(msg){err.textContent=msg;err.style.display='block';}
+
+// ── AUDIO ──
+const audio=document.getElementById('audio');
+const playBtn=document.getElementById('playBtn');
+
+const pname=document.getElementById('pname');
+// ▶︎ / ⏸︎ ғана
+playBtn.onclick=async()=>{
+  try{
+    if(audio.paused){await audio.play();playBtn.textContent='⏸︎';}
+    else{audio.pause();playBtn.textContent='▶︎';}
+  }
+  catch(e){showError('▶︎ басып ойнат.');}
+};
+
+// ── WEBGL CHECK ──
+try{
+  const t=document.createElement('canvas').getContext('webgl')||document.createElement('canvas').getContext('experimental-webgl');
+  if(!t)throw new Error('WebGL жоқ');
+}catch(e){showError('WebGL қолдамайды. Chrome/Edge/Firefox қолданыңыз.');return;}
+
+try{
+// ── THREE.JS SETUP ──
+const canvas=document.getElementById('galaxy-canvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.outputEncoding=THREE.sRGBEncoding;
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,2000);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.06;
+controls.minDistance=10;controls.maxDistance=220;
+controls.target.set(0,0,0);
+
+function setCam(){
+  const w=window.innerWidth,h=window.innerHeight;
+  const mob=w<768||w<h;
+  camera.fov=mob?90:75;
+  camera.position.set(0,mob?26:22,mob?110:75);
+  camera.updateProjectionMatrix();controls.update();
+}setCam();
+
+// ── STARFIELD ──
+function makePrettyStarTexture(size=1024,count=2600){
+  const c=document.createElement('canvas');c.width=c.height=size;
+  const g=c.getContext('2d');
+  const r=size/2;
+  const bg=g.createRadialGradient(r,r,r*.2,r,r,r);
+  bg.addColorStop(0,'#0a0005');bg.addColorStop(1,'#000');
+  g.fillStyle=bg;g.fillRect(0,0,size,size);
+  for(let i=0;i<count;i++){
+    const x=Math.random()*size,y=Math.random()*size;
+    const base=Math.random()*.7+.3;
+    const glow=g.createRadialGradient(x,y,0,x,y,Math.random()*2.2+1.6);
+    const hp=Math.random();
+    let ci=hp<.4?'rgba(255,150,210,'+(0.7*base)+')':'rgba(220,100,180,'+(0.6*base)+')';
+    let co='rgba(180,30,120,'+(0.08*base)+')';
+    glow.addColorStop(0,ci);glow.addColorStop(1,co);
+    g.fillStyle=glow;g.beginPath();g.arc(x,y,Math.random()*1.2+.6,0,Math.PI*2);g.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+const starTex=makePrettyStarTexture(1024,2600);
+starTex.wrapS=starTex.wrapT=THREE.RepeatWrapping;
+const bgMesh=new THREE.Mesh(
+  new THREE.SphereGeometry(600,64,64),
+  new THREE.MeshBasicMaterial({map:starTex,side:THREE.BackSide})
+);
+scene.add(bgMesh);
+
+// ── GALAXY (жазулар) ──
+const galaxy=new THREE.Group();scene.add(galaxy);
+
+// Жазулар — фотодағындай розовый
+const phrases=[
+  'Сені сүйемін 💕','Жүрегім','Менің сүйіктім','Бұл күн сенікі',
+  'Шексіз махаббат','Армандадым','Шексіз','Үнемі қасыңдамын',
+  'Жүрегімнің жчры','Мәңгіге','Ғашықпын','Мәңгілік махаббат',
+  'Бәрім сенсің','Бәрі сенсің','Сүйіктім','Күн сайын',
+  'Бақыттым 💖','Сені жақсы көремін','Аспаным 🌌','Жарығым ✨',
+  'Менің әлемім','Тыныштығым','Арманым','Ханшайымым 👑','Өмірім'
+];
+const phraseCount=Math.max(phrases.length*6,180);
+const arms=5,radius=82,maxH=22;
+
+function makeTextTexture(text){
+  const c=document.createElement('canvas');c.width=1024;c.height=128;
+  const g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);
+  g.font='800 46px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+  g.textAlign='center';g.textBaseline='middle';
+  // розовый неон глоу
+  g.shadowColor='rgba(255,0,100,0.8)';g.shadowBlur=20;
+  // түс: ақ-розовый аралас
+  const grad=g.createLinearGradient(0,40,0,88);
+  grad.addColorStop(0,'rgba(255,100,180,1)');
+  grad.addColorStop(1,'rgba(220,20,120,1)');
+  g.fillStyle=grad;
+  g.fillText(text,c.width/2,c.height/2);
+  return new THREE.CanvasTexture(c);
+}
+
+for(let i=0;i<phraseCount;i++){
+  const text=phrases[i%phrases.length];
+  const tex=makeTextTexture(text);
+  const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+  const perArm=phraseCount/arms;
+  const ang=(i%perArm)*(Math.PI*2/perArm);
+  const armAng=Math.floor(i/perArm)*(Math.PI*2/arms);
+  const dist=Math.pow(i/phraseCount,0.72)*radius;
+  const thick=Math.pow(1-(dist/radius),2);
+  const x=Math.cos(ang+armAng)*dist,z=Math.sin(ang+armAng)*dist,y=(Math.random()-.5)*maxH*thick*.9;
+  spr.position.set(x,y,z);spr.scale.set(20,2.6,1);
+  galaxy.add(spr);
+}
+
+// Galaxy stars
+const starCount=8000,geom=new THREE.BufferGeometry(),gpos=new Float32Array(starCount*3);
+for(let i=0;i<starCount;i++){
+  const ang=Math.random()*Math.PI*2,dist=Math.random()*radius*1.15;
+  const y=(Math.random()-.5)*36*Math.pow(1-Math.min(dist,radius)/radius,1.5);
+  gpos[i*3]=Math.cos(ang)*dist;gpos[i*3+1]=y;gpos[i*3+2]=Math.sin(ang)*dist;
+}
+geom.setAttribute('position',new THREE.BufferAttribute(gpos,3));
+galaxy.add(new THREE.Points(geom,new THREE.PointsMaterial({color:0xff44aa,size:.22,transparent:true,opacity:.5,blending:THREE.AdditiveBlending})));
+
+// ── ҚАРА ҚҰРДЫМ (кіші) ──
+const coreR=13;
+const coreCv=document.createElement('canvas');coreCv.width=coreCv.height=256;
+const cctx=coreCv.getContext('2d');
+const cgrd=cctx.createRadialGradient(128,128,6,128,128,128);
+cgrd.addColorStop(0,'#000');cgrd.addColorStop(.6,'#080010');cgrd.addColorStop(1,'#000');
+cctx.fillStyle=cgrd;cctx.arc(128,128,128,0,Math.PI*2);cctx.fill();
+const core=new THREE.Mesh(
+  new THREE.SphereGeometry(coreR,64,64),
+  new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(coreCv)})
+);
+core.renderOrder=1;scene.add(core);
+
+// ── САТУРН САҚИНАЛАРЫ — розовый неон ──
+// Бөлшек белдеулері (XZ жазықтығында — горизонталь)
+function makeBand(innerR,outerR,count,color,opacity){
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(count*3),col=new Float32Array(count*3);
+  const base=new THREE.Color(color);
+  for(let i=0;i<count;i++){
+    const ang=Math.random()*Math.PI*2,r=innerR+Math.random()*(outerR-innerR);
+    pos[i*3]=Math.cos(ang)*r;pos[i*3+1]=(Math.random()-.5)*.08;pos[i*3+2]=Math.sin(ang)*r;
+    const v=.55+Math.random()*.45;
+    col[i*3]=Math.min(1,base.r*v+.15);col[i*3+1]=Math.min(1,base.g*v);col[i*3+2]=Math.min(1,base.b*v);
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  return new THREE.Points(geo,new THREE.PointsMaterial({size:.25,vertexColors:true,transparent:true,opacity}));
+}
+
+const rings=new THREE.Group();
+rings.position.set(0,0,0);
+// Тек 3 қабат — жинақы, таза
+rings.add(makeBand(coreR*1.15, coreR*2.2, 8000, 0xff1a8c, .80)); // ішкі негізгі
+rings.add(makeBand(coreR*2.3, coreR*3.2, 5000, 0xff44aa, .60)); // орта
+rings.add(makeBand(coreR*3.3, coreR*4.5, 2500, 0xff0066, .30)); // сыртқы нәзік
+scene.add(rings);
+
+// Неон сақина (жарқыраған)
+function neonTorus(r,t,col,ei,op){
+  const m=new THREE.Mesh(
+    new THREE.TorusGeometry(r,t,16,180),
+    new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:ei,transparent:true,opacity:op,side:THREE.DoubleSide})
+  );
+  m.rotation.x=-Math.PI/2;
+  scene.add(m);return m;
+}
+scene.add(new THREE.AmbientLight(0xffffff,.2));
+const pl=new THREE.PointLight(0xff2d78,12,60);pl.position.set(0,5,0);scene.add(pl);
+
+const neonCore=neonTorus(coreR*1.08,.04*coreR,0xff1a8c,10,0.95);
+const neonGlow=neonTorus(coreR*1.08,.35*coreR,0xff0066,3,.28);
+
+// Halo
+function makeHaloTex(size=1024,inner=.45){
+  const c=document.createElement('canvas');c.width=c.height=size;
+  const g=c.getContext('2d');const r=size/2;
+  const grd=g.createRadialGradient(r,r,r*inner,r,r,r);
+  grd.addColorStop(0,'rgba(200,0,100,.25)');
+  grd.addColorStop(.35,'rgba(160,0,80,.15)');
+  grd.addColorStop(.7,'rgba(100,0,60,.08)');
+  grd.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=grd;g.fillRect(0,0,size,size);
+  const tex=new THREE.CanvasTexture(c);tex.needsUpdate=true;return tex;
+}
+const halo=new THREE.Mesh(
+  new THREE.PlaneGeometry(280,280),
+  new THREE.MeshBasicMaterial({map:makeHaloTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.55})
+);
+halo.rotation.x=-Math.PI/2;scene.add(halo);
+
+// Photon ring
+const photonRing=new THREE.Mesh(
+  new THREE.RingGeometry(coreR*1.02,coreR*1.15,128),
+  new THREE.MeshBasicMaterial({color:0xff0066,transparent:true,opacity:.8,side:THREE.DoubleSide})
+);
+photonRing.rotation.x=-Math.PI/2;scene.add(photonRing);
+
+// ── СУРЕТТЕР 3D ПРОЕКЦИЯСЫ ──
+// Сурет орындары (3D координаттар) — сақина ішінде + айналасында
+// 10 фото — түрлі биіктікте, түрлі бұрышта, қара құрдымнан алыс
+const imgDefs=[
+  {id:'si0', pos:[-45,  8,  20], size:72},  // сол алды жоғары
+  {id:'si1', pos:[ 15, 12,  50], size:68},  // оң алды жоғары
+  {id:'si2', pos:[-20,  2,  55], size:70},  // алды төмен
+  {id:'si3', pos:[ 50,  6,   5], size:66},  // оң
+  {id:'si4', pos:[-55,  4, -10], size:65},  // сол
+  {id:'si5', pos:[ 30, 10, -40], size:68},  // оң арт жоғары
+  {id:'si6', pos:[-25,  3, -52], size:65},  // сол арт
+  {id:'si7', pos:[  5, 15, -30], size:70},  // орта арт жоғары
+  {id:'si8', pos:[ 45,  2,  35], size:64},  // оң алды төмен
+  {id:'si9', pos:[-40, 12,  38], size:66},  // сол алды жоғары
+];
+const imgEls=imgDefs.map(d=>document.getElementById(d.id));
+const tmpV=new THREE.Vector3();
+
+// ── СТИКЕРЛЕР — суреттер сияқты 3D проекция ──
+const stkDefs=[
+  {id:'stk0', pos:[-30, 6,  35], size:72},
+  {id:'stk1', pos:[ 35,10,  25], size:68},
+  {id:'stk2', pos:[ 55, 4,  -5], size:65},
+  {id:'stk3', pos:[-50, 4, -15], size:65},
+  {id:'stk4', pos:[  0,14, -35], size:68},
+];
+const stkEls=stkDefs.map(d=>document.getElementById(d.id));
+const stkV=new THREE.Vector3();
+
+function updateStickers(){
+  stkDefs.forEach((d,i)=>{
+    const el=stkEls[i];if(!el)return;
+    const img=el.querySelector('img');
+    if(!img||!img.getAttribute('src')){el.style.opacity='0';return;}
+    stkV.set(...d.pos).project(camera);
+    if(stkV.z>=1){el.style.opacity='0';return;}
+    const x=(stkV.x+1)/2*window.innerWidth;
+    const y=(-stkV.y+1)/2*window.innerHeight;
+    el.style.width =d.size+'px';
+    el.style.height=d.size+'px';
+    el.style.left  =(x-d.size/2)+'px';
+    el.style.top   =(y-d.size/2)+'px';
+    el.style.opacity='1';
+  });
+}
+
+function updateImgs(){
+  imgDefs.forEach((d,i)=>{
+    const el=imgEls[i];if(!el)return;
+    const img=el.querySelector('img');
+    // src бос болса жасыр
+    if(!img||!img.getAttribute('src')){el.style.opacity='0';return;}
+    tmpV.set(...d.pos).project(camera);
+    if(tmpV.z>=1){el.style.opacity='0';return;}
+    const x=(tmpV.x+1)/2*window.innerWidth;
+    const y=(-tmpV.y+1)/2*window.innerHeight;
+    el.style.opacity='1';
+    el.style.width=d.size+'px';
+    el.style.height=d.size+'px';
+    el.style.left=(x-d.size/2)+'px';
+    el.style.top=(y-d.size/2)+'px';
+  });
+}
+
+// ── ANIMATE ──
+let tw=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const t=performance.now()*.001;
+  tw=(tw+.0003)%1;
+  starTex.offset.set(tw,0);
+  galaxy.rotation.y=t*.05;
+  core.rotation.y=t*.12;
+  rings.rotation.y=t*.04;
+  neonCore.rotation.z=t*.3;
+  neonGlow.rotation.z=t*.3;
+  photonRing.rotation.z=t*.18;
+  halo.rotation.z=t*.02;
+  neonCore.material.emissiveIntensity=6+2*Math.sin(t*2);
+  neonGlow.material.emissiveIntensity=2+Math.sin(t*2);
+  pl.intensity=7+3*Math.sin(t*2.5);
+  controls.update();
+  updateImgs();
+  updateStickers();
+  renderer.render(scene,camera);
+}animate();
+
+// resize
+window.addEventListener('resize',()=>{
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  setCam();
+});
+
+// ── HEARTS OVERLAY (2 рет басқанда жүрек шашылады) ──
+const fx=document.getElementById('fx');
+const ctx2=fx.getContext('2d');
+function resizeFx(){
+  fx.width=Math.floor(innerWidth*Math.min(2,window.devicePixelRatio||1));
+  fx.height=Math.floor(innerHeight*Math.min(2,window.devicePixelRatio||1));
+  fx.style.width=innerWidth+'px';fx.style.height=innerHeight+'px';
+}
+addEventListener('resize',resizeFx);resizeFx();
+const DPR=Math.min(2,window.devicePixelRatio||1);
+const heartsArr=[];
+function spawnHearts(x,y,n=20){
+  x*=DPR;y*=DPR;
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2;
+    heartsArr.push({x,y,vx:Math.cos(a)*(.6+Math.random()*.8),vy:-(0.8+Math.random()*1.2),life:1,size:10+Math.random()*16});
+  }
+}
+function drawHeart(x,y,size){
+  const s=size;ctx2.save();ctx2.translate(x,y);
+  ctx2.beginPath();ctx2.moveTo(0,-.25*s);
+  ctx2.bezierCurveTo(.5*s,-.9*s,1.4*s,-.1*s,0,.9*s);
+  ctx2.bezierCurveTo(-1.4*s,-.1*s,-.5*s,-.9*s,0,-.25*s);
+  const g=ctx2.createRadialGradient(0,0,0,0,0,s);
+  g.addColorStop(0,'rgba(255,100,200,.95)');g.addColorStop(1,'rgba(255,20,140,0)');
+  ctx2.fillStyle=g;ctx2.fill();ctx2.restore();
+}
+let lastTap=0;
+addEventListener('click',e=>{const now=performance.now();if(now-lastTap<320)spawnHearts(e.clientX,e.clientY,20);lastTap=now;},{passive:true});
+addEventListener('touchend',e=>{const now=performance.now();const t=e.changedTouches&&e.changedTouches[0];if(now-lastTap<320&&t)spawnHearts(t.clientX,t.clientY,20);lastTap=now;},{passive:true});
+
+function loopFx(){
+  ctx2.clearRect(0,0,fx.width,fx.height);
+  for(let i=heartsArr.length-1;i>=0;i--){const h=heartsArr[i];h.x+=h.vx;h.y+=h.vy;h.vy-=.02;h.life-=.015;
+    ctx2.globalAlpha=Math.max(0,h.life);drawHeart(h.x,h.y,h.size);ctx2.globalAlpha=1;if(h.life<=0)heartsArr.splice(i,1);
+  }
+  requestAnimationFrame(loopFx);
+}loopFx();
+
+}catch(e){showError('Қате: '+e.message);console.error(e);}
+})();
+</script>
+</body>
+</html>
