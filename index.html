@@ -39,7 +39,7 @@
       id="si0" — ортадағы ең үлкен (мысалы: 2 аю)
       id="si1"..."si7" — айналасындағылар
     */
-    .si{position:fixed;border-radius:50%;overflow:hidden;pointer-events:none;z-index:8;
+    .si{position:fixed;border-radius:0%;overflow:hidden;pointer-events:none;z-index:8;
         border:2px solid rgba(255,100,180,.4);box-shadow:0 0 20px rgba(255,20,120,.4);}
     .si img{width:100%;height:100%;object-fit:cover;display:block;}
 
@@ -86,11 +86,11 @@
 
 <!-- МУЗЫКАНЫ ОСЫНДА КОЙ: src="" ішіне файл атын жаз -->
 <div class="player">
+  <button id="prevBtn">⏮</button>
   <button id="playBtn">▶︎</button>
+  <button id="nextBtn">⏭</button>
   <span class="pname" id="pname">♫</span>
-  <audio id="audio" preload="auto" loop>
-    <source src="musiclove.mp3" type="audio/mpeg">
-  </audio>
+  <audio id="audio" preload="auto"></audio>
 </div>
 
 <canvas id="fx" style="position:fixed;inset:0;pointer-events:none;z-index:9;"></canvas>
@@ -100,12 +100,39 @@
 const err=document.getElementById('err');
 function showError(msg){err.textContent=msg;err.style.display='block';}
 
-// ── AUDIO ──
+// ── AUDIO + PLAYLIST ──
 const audio=document.getElementById('audio');
 const playBtn=document.getElementById('playBtn');
-
+const prevBtn=document.getElementById('prevBtn');
+const nextBtn=document.getElementById('nextBtn');
 const pname=document.getElementById('pname');
-// ▶︎ / ⏸︎ ғана
+
+// ═══════════════════════════════════════
+// ӘНДЕР ТІЗІМІ — файл аттарын осында жаз
+// HTML файлымен БІР ҚАЛТАДА болуы керек
+// ═══════════════════════════════════════
+const playlist=[
+  'love me long time.mp3',   // 1-ші ән
+  'Shape Of My Heart.mp3',   // 2-ші ән (// алып тастап қос)
+  'I Love Her.mp3',   // 3-ші ән
+];
+
+let curTrack=0;
+
+function loadTrack(idx){
+  if(!playlist.length)return;
+  curTrack=(idx+playlist.length)%playlist.length;
+  audio.src=playlist[curTrack];
+  pname.textContent=playlist[curTrack].replace(/\.[^/.]+$/,'');
+  audio.play().then(()=>playBtn.textContent='⏸︎').catch(()=>{});
+}
+
+// Ән бітсе келесіге өт
+audio.addEventListener('ended',()=>loadTrack(curTrack+1));
+
+// Бірінші ән жүктеу
+if(playlist.length) loadTrack(0);
+
 playBtn.onclick=async()=>{
   try{
     if(audio.paused){await audio.play();playBtn.textContent='⏸︎';}
@@ -113,6 +140,8 @@ playBtn.onclick=async()=>{
   }
   catch(e){showError('▶︎ басып ойнат.');}
 };
+prevBtn.onclick=()=>loadTrack(curTrack-1);
+nextBtn.onclick=()=>loadTrack(curTrack+1);
 
 // ── WEBGL CHECK ──
 try{
@@ -334,6 +363,10 @@ const stkEls=stkDefs.map(d=>document.getElementById(d.id));
 const stkV=new THREE.Vector3();
 
 function updateStickers(){
+  // zoom scale: жақын→үлкен, алыс→кіші. 0.5–1.8 арасында шектелген
+  const camDist=camera.position.length();
+  const baseDist=80;
+  const scale=Math.min(1.8, Math.max(0.5, baseDist/camDist));
   stkDefs.forEach((d,i)=>{
     const el=stkEls[i];if(!el)return;
     const img=el.querySelector('img');
@@ -342,29 +375,33 @@ function updateStickers(){
     if(stkV.z>=1){el.style.opacity='0';return;}
     const x=(stkV.x+1)/2*window.innerWidth;
     const y=(-stkV.y+1)/2*window.innerHeight;
-    el.style.width =d.size+'px';
-    el.style.height=d.size+'px';
-    el.style.left  =(x-d.size/2)+'px';
-    el.style.top   =(y-d.size/2)+'px';
+    const sz=Math.round(d.size*scale);
+    el.style.width =sz+'px';
+    el.style.height=sz+'px';
+    el.style.left  =(x-sz/2)+'px';
+    el.style.top   =(y-sz/2)+'px';
     el.style.opacity='1';
   });
 }
 
 function updateImgs(){
+  const camDist=camera.position.length();
+  const baseDist=80;
+  const scale=Math.min(1.8, Math.max(0.5, baseDist/camDist));
   imgDefs.forEach((d,i)=>{
     const el=imgEls[i];if(!el)return;
     const img=el.querySelector('img');
-    // src бос болса жасыр
     if(!img||!img.getAttribute('src')){el.style.opacity='0';return;}
     tmpV.set(...d.pos).project(camera);
     if(tmpV.z>=1){el.style.opacity='0';return;}
     const x=(tmpV.x+1)/2*window.innerWidth;
     const y=(-tmpV.y+1)/2*window.innerHeight;
+    const sz=Math.round(d.size*scale);
     el.style.opacity='1';
-    el.style.width=d.size+'px';
-    el.style.height=d.size+'px';
-    el.style.left=(x-d.size/2)+'px';
-    el.style.top=(y-d.size/2)+'px';
+    el.style.width=sz+'px';
+    el.style.height=sz+'px';
+    el.style.left=(x-sz/2)+'px';
+    el.style.top=(y-sz/2)+'px';
   });
 }
 
